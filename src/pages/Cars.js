@@ -29,9 +29,10 @@ function Cars() {
   const [loading, setLoading] = useState(true);
   const [selectedBrand, setSelectedBrand] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
-  const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(5000);
-  const [selectedYear, setSelectedYear] = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [minYear, setMinYear] = useState('');
+  const [maxYear, setMaxYear] = useState('');
   const [years, setYears] = useState([]);
   const [carImages, setCarImages] = useState({});
   const [error, setError] = useState(null);
@@ -122,12 +123,12 @@ function Cars() {
   };
 
   const handleMinPriceChange = (event) => {
-    const value = event.target.value === '' ? 0 : Number(event.target.value);
+    const value = event.target.value === '' ? '' : Number(event.target.value);
     setMinPrice(value);
   };
 
   const handleMaxPriceChange = (event) => {
-    const value = event.target.value === '' ? maxPrice : Number(event.target.value);
+    const value = event.target.value === '' ? '' : Number(event.target.value);
     setMaxPrice(value);
   };
 
@@ -139,10 +140,12 @@ function Cars() {
     const colorMatch = !selectedColor || car.colorName === colors.find(c => c.colorId === parseInt(selectedColor))?.colorName;
     
     // Yıl filtresi
-    const yearMatch = !selectedYear || car.modelYear === parseInt(selectedYear);
+    const yearMatch = (!minYear || car.modelYear >= parseInt(minYear)) && 
+                     (!maxYear || car.modelYear <= parseInt(maxYear));
     
-    // Fiyat filtresi
-    const priceMatch = car.dailyPrice >= minPrice && car.dailyPrice <= maxPrice;
+    // Fiyat filtresi - güncellendi
+    const priceMatch = (minPrice === '' || car.dailyPrice >= minPrice) && 
+                      (maxPrice === '' || car.dailyPrice <= maxPrice);
     
     return brandMatch && colorMatch && yearMatch && priceMatch;
   });
@@ -201,22 +204,36 @@ function Cars() {
             </Select>
           </FormControl>
         </Grid>
-        <Grid item xs={12} md={3}>
-          <FormControl fullWidth>
-            <InputLabel>Model Yılı</InputLabel>
-            <Select
-              value={selectedYear}
-              label="Model Yılı"
-              onChange={(e) => setSelectedYear(e.target.value)}
-            >
-              <MenuItem value="">Tümü</MenuItem>
-              {years.map((year) => (
-                <MenuItem key={year} value={year}>
-                  {year}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+        <Grid item xs={12} sm={6} md={3}>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              fullWidth
+              label="Min Yıl"
+              type="number"
+              value={minYear}
+              onChange={(e) => setMinYear(e.target.value)}
+              inputProps={{ 
+                min: "1900",
+                max: new Date().getFullYear(),
+                step: "1"
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Max Yıl"
+              type="number"
+              value={maxYear}
+              onChange={(e) => setMaxYear(e.target.value)}
+              inputProps={{ 
+                min: "1900",
+                max: new Date().getFullYear(),
+                step: "1"
+              }}
+              error={maxYear && minYear && parseInt(maxYear) < parseInt(minYear)}
+              helperText={maxYear && minYear && parseInt(maxYear) < parseInt(minYear) ? 
+                "Max yıl, min yıldan küçük olamaz" : ""}
+            />
+          </Box>
         </Grid>
         <Grid item xs={12} md={3}>
           <Typography gutterBottom>
@@ -229,7 +246,9 @@ function Cars() {
               value={minPrice}
               onChange={handleMinPriceChange}
               size="small"
-              InputProps={{ inputProps: { min: 0 } }}
+              InputProps={{ 
+                inputProps: { min: 0 }
+              }}
             />
             <TextField
               label="Max"
@@ -237,7 +256,12 @@ function Cars() {
               value={maxPrice}
               onChange={handleMaxPriceChange}
               size="small"
-              InputProps={{ inputProps: { min: minPrice } }}
+              InputProps={{ 
+                inputProps: { min: 0 }
+              }}
+              error={maxPrice !== '' && minPrice !== '' && maxPrice < minPrice}
+              helperText={maxPrice !== '' && minPrice !== '' && maxPrice < minPrice ? 
+                "Max fiyat, min fiyattan küçük olamaz" : ""}
             />
           </Box>
         </Grid>
