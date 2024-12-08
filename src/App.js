@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider as MuiThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { ThemeProvider as CustomThemeProvider, useTheme } from './context/ThemeContext';
@@ -12,6 +12,7 @@ import Register from './pages/Register';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import Profile from './pages/Profile';
+import { checkTokenExpiration, setupActivityTracking } from './utils/auth';
 
 function AppContent() {
   const { darkMode } = useTheme();
@@ -66,6 +67,28 @@ function AppContent() {
       },
     },
   });
+
+  useEffect(() => {
+    // Aktivite izlemeyi başlat
+    setupActivityTracking();
+
+    // Token kontrolü için interval
+    const tokenCheckInterval = setInterval(() => {
+      if (!checkTokenExpiration()) {
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+      }
+    }, 30000); // Her 30 saniyede bir kontrol et
+
+    return () => {
+      clearInterval(tokenCheckInterval);
+      // Event listener'ları temizle
+      ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(event => {
+        document.removeEventListener(event, () => {});
+      });
+    };
+  }, []);
 
   return (
     <MuiThemeProvider theme={theme}>
