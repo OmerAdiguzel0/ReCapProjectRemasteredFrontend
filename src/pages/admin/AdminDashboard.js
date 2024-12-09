@@ -32,6 +32,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import UpdateCarForm from '../../components/UpdateCarForm';
 import { isAdmin } from '../../utils/auth';
 import { useNavigate } from 'react-router-dom';
+import ClearIcon from '@mui/icons-material/Clear';
 
 function AdminDashboard() {
   // State tanımlamaları
@@ -40,6 +41,7 @@ function AdminDashboard() {
   const [success, setSuccess] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedImagePreview, setSelectedImagePreview] = useState(null);
   const fileInputRef = useRef(null);
   
   // Veri state'leri
@@ -326,8 +328,31 @@ function AdminDashboard() {
   const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (file) {
-        console.log('Seçilen dosya:', file);
+        // Dosya boyutu kontrolü (örn: 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            setError('Dosya boyutu 5MB\'dan küçük olmalıdır');
+            return;
+        }
+
+        // Dosya tipi kontrolü
+        if (!file.type.startsWith('image/')) {
+            setError('Lütfen geçerli bir resim dosyası seçin');
+            return;
+        }
+
         setSelectedFile(file);
+        // Önizleme URL'i oluştur
+        const previewUrl = URL.createObjectURL(file);
+        setSelectedImagePreview(previewUrl);
+    }
+  };
+
+  // Seçilen resmi kaldırma fonksiyonu
+  const handleRemoveSelectedImage = () => {
+    setSelectedFile(null);
+    setSelectedImagePreview(null);
+    if (fileInputRef.current) {
+        fileInputRef.current.value = '';
     }
   };
 
@@ -359,72 +384,56 @@ function AdminDashboard() {
   // Araba ekleme fonksiyonu
   const arabaEkle = async () => {
     try {
-      setError(null);
-      setSuccess(null);
-      setLoading(true);
+        setError(null);
+        setSuccess(null);
+        setLoading(true);
 
-      // Form validasyonu
-      if (!yeniAraba.brandId || !yeniAraba.colorId || !yeniAraba.modelYear || 
-          !yeniAraba.dailyPrice || !yeniAraba.description) {
-        setError('Lütfen tüm alanları doldurun');
-        return;
-      }
-
-      // Sayısal değerlerin kontrolü
-      if (isNaN(parseFloat(yeniAraba.dailyPrice)) || parseFloat(yeniAraba.dailyPrice) <= 0) {
-        setError('Geçerli bir fiyat giriniz');
-        return;
-      }
-
-      if (isNaN(parseInt(yeniAraba.modelYear)) || parseInt(yeniAraba.modelYear) < 1900) {
-        setError('Geçerli bir model yılı giriniz');
-        return;
-      }
-
-      // Araba verisi hazırla
-      const arabaData = {
-        brandId: yeniAraba.brandId,
-        colorId: yeniAraba.colorId,
-        modelYear: yeniAraba.modelYear,
-        dailyPrice: yeniAraba.dailyPrice,
-        description: yeniAraba.description.trim(),
-        minFindeksScore: yeniAraba.minFindeksScore || 500,
-        image: selectedFile
-      };
-
-      console.log('Gönderilecek araba verisi:', arabaData);
-
-      const response = await api.addCar(arabaData);
-      
-      if (response.data.success) {
-        setSuccess('Araba başarıyla eklendi');
-        
-        // Formu temizle
-        setYeniAraba({
-          brandId: '',
-          colorId: '',
-          modelYear: '',
-          dailyPrice: '',
-          description: '',
-          minFindeksScore: 500
-        });
-        setSelectedFile(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+        // Form validasyonu
+        if (!yeniAraba.brandId || !yeniAraba.colorId || !yeniAraba.modelYear || 
+            !yeniAraba.dailyPrice || !yeniAraba.description) {
+            setError('Lütfen tüm alanları doldurun');
+            return;
         }
 
-        // Verileri yenile
-        await veriGetir();
-      } else {
-        setError(response.data.message || 'Araba eklenirken bir hata oluştu');
-      }
+        // Veri hazırlama
+        const carData = {
+            ...yeniAraba,
+            image: selectedFile // Seçilen dosyayı ekle
+        };
+
+        const response = await api.addCar(carData);
+        
+        if (response.data.success) {
+            setSuccess('Araba başarıyla eklendi');
+            
+            // Formu temizle
+            setYeniAraba({
+                brandId: '',
+                colorId: '',
+                modelYear: '',
+                dailyPrice: '',
+                description: '',
+                minFindeksScore: 500
+            });
+            
+            // Resim seçimini ve önizlemeyi temizle
+            setSelectedFile(null);
+            setSelectedImagePreview(null);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
+            
+            await veriGetir();
+        } else {
+            setError(response.data.message);
+        }
     } catch (error) {
-      console.error('Araba ekleme hatası:', error);
-      setError(error.message || 'Araba eklenirken bir hata oluştu');
+        console.error('Araba ekleme hatası:', error);
+        setError(error.response?.data?.message || 'Bir hata oluştu');
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
 
   // Renk düzenleme moduna geçiş fonksiyonu
   const handleEditColorClick = (color) => {
@@ -720,26 +729,81 @@ function AdminDashboard() {
 
               {/* Resim Yükleme */}
               <Grid item xs={12} sm={6}>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  ref={fileInputRef}
-                  style={{ display: 'none' }}
-                />
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  onClick={() => fileInputRef.current?.click()}
-                  startIcon={<CloudUploadIcon />}
-                >
-                  Resim Seç
-                </Button>
-                {selectedFile && (
-                  <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-                    Seçilen dosya: {selectedFile.name}
-                  </Typography>
-                )}
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                        Araç Resmi
+                    </Typography>
+                    
+                    {/* Resim Önizleme Alanı */}
+                    {selectedImagePreview && (
+                        <Box sx={{ position: 'relative', display: 'inline-block', mb: 2 }}>
+                            <img 
+                                src={selectedImagePreview}
+                                alt="Seçilen resim önizlemesi"
+                                style={{
+                                    maxWidth: '200px',
+                                    maxHeight: '150px',
+                                    objectFit: 'contain',
+                                    borderRadius: '8px'
+                                }}
+                            />
+                            <IconButton
+                                onClick={handleRemoveSelectedImage}
+                                sx={{
+                                    position: 'absolute',
+                                    top: -10,
+                                    right: -10,
+                                    backgroundColor: 'white',
+                                    '&:hover': {
+                                        backgroundColor: '#f5f5f5'
+                                    }
+                                }}
+                            >
+                                <ClearIcon color="error" />
+                            </IconButton>
+                        </Box>
+                    )}
+
+                    {/* Resim Yükleme Butonu */}
+                    <Box
+                        sx={{
+                            border: '2px dashed',
+                            borderColor: 'primary.main',
+                            borderRadius: 2,
+                            p: 3,
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            '&:hover': {
+                                backgroundColor: 'action.hover'
+                            }
+                        }}
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        {!selectedImagePreview ? (
+                            <>
+                                <CloudUploadIcon sx={{ fontSize: 40, color: 'primary.main', mb: 1 }} />
+                                <Typography>
+                                    Resim seçmek için tıklayın veya sürükleyin
+                                </Typography>
+                                <Typography variant="caption" color="textSecondary">
+                                    Maksimum dosya boyutu: 5MB
+                                </Typography>
+                            </>
+                        ) : (
+                            <Typography>
+                                Resmi değiştirmek için tıklayın
+                            </Typography>
+                        )}
+                    </Box>
+
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        style={{ display: 'none' }}
+                        onChange={handleFileSelect}
+                        accept="image/*"
+                    />
+                </Box>
               </Grid>
 
               {/* Ekleme Butonu */}

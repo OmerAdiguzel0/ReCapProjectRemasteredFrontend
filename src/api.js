@@ -96,11 +96,11 @@ const api = {
 
             // Önce arabayı ekle
             const carResponse = await axios.post(`${BASE_URL}/cars`, {
-                brandId: parseInt(carData.brandId) || 0,
-                colorId: parseInt(carData.colorId) || 0,
-                modelYear: parseInt(carData.modelYear) || new Date().getFullYear(),
-                dailyPrice: parseFloat(carData.dailyPrice) || 0,
-                description: (carData.description || '').trim(),
+                brandId: parseInt(carData.brandId),
+                colorId: parseInt(carData.colorId),
+                modelYear: parseInt(carData.modelYear),
+                dailyPrice: parseFloat(carData.dailyPrice),
+                description: carData.description.trim(),
                 minFindeksScore: parseInt(carData.minFindeksScore) || 500
             });
 
@@ -110,46 +110,33 @@ const api = {
                 throw new Error(carResponse.data.message || 'Araba eklenemedi');
             }
 
-            // Resim yükleme işlemi
-            if (carData.image && carResponse.data.data?.carId) {
-                console.group('Image Upload');
-                try {
-                    const formData = new FormData();
-                    formData.append('ImagePath', carData.image);
-                    formData.append('carId', carResponse.data.data.carId);
+            // Eğer resim varsa, resmi yükle
+            if (carData.image) {
+                console.log('Uploading image for car:', carResponse.data.data.carId);
+                
+                const formData = new FormData();
+                formData.append('ImagePath', carData.image);
+                formData.append('carId', carResponse.data.data.carId);
 
-                    console.log('Image Upload Data:', {
-                        fileName: carData.image.name,
-                        fileSize: carData.image.size,
-                        fileType: carData.image.type,
-                        carId: carResponse.data.data.carId
-                    });
-
-                    const imageResponse = await axios.post(`${BASE_URL}/carimages/add`, formData, {
-                        headers: {
-                            'Content-Type': 'multipart/form-data'
-                        }
-                    });
-
-                    if (!imageResponse.data.success) {
-                        console.error('Image upload failed:', imageResponse.data.message);
-                        throw new Error(imageResponse.data.message);
+                const imageResponse = await axios.post(`${BASE_URL}/carimages/add`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
                     }
+                });
 
-                    console.log('Image Upload Response:', imageResponse.data);
-                } catch (imageError) {
-                    console.error('Image Upload Error:', imageError);
-                    throw imageError; // Resim yükleme hatasını yukarı fırlat
-                } finally {
-                    console.groupEnd();
+                console.log('Image Upload Response:', imageResponse.data);
+
+                if (!imageResponse.data.success) {
+                    console.error('Image upload failed:', imageResponse.data.message);
                 }
             }
 
-            console.groupEnd();
             return carResponse;
         } catch (error) {
-            console.error('Operation Failed:', error);
+            console.error('Car Add Error:', error);
             throw error;
+        } finally {
+            console.groupEnd();
         }
     },
     updateCar: async (carId, updateData) => {
