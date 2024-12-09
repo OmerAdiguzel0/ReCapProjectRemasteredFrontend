@@ -134,10 +134,9 @@ function Cars() {
   });
 
   const handleRentClick = (car) => {
-    navigate('/rentals', { 
+    navigate('/rental-details', { 
       state: { 
-        selectedCar: car,
-        fromCarsPage: true
+        selectedCar: car
       } 
     });
   };
@@ -229,7 +228,7 @@ function Cars() {
                 max: new Date().getFullYear(),
                 step: "1"
               }}
-              error={maxYear && minYear && parseInt(maxYear) < parseInt(minYear)}
+              error={Boolean(maxYear && minYear && parseInt(maxYear) < parseInt(minYear))}
               helperText={maxYear && minYear && parseInt(maxYear) < parseInt(minYear) ? 
                 "Max yıl, min yıldan küçük olamaz" : ""}
             />
@@ -259,7 +258,7 @@ function Cars() {
               InputProps={{ 
                 inputProps: { min: 0 }
               }}
-              error={maxPrice !== '' && minPrice !== '' && maxPrice < minPrice}
+              error={Boolean(maxPrice !== '' && minPrice !== '' && maxPrice < minPrice)}
               helperText={maxPrice !== '' && minPrice !== '' && maxPrice < minPrice ? 
                 "Max fiyat, min fiyattan küçük olamaz" : ""}
             />
@@ -342,7 +341,7 @@ function Cars() {
                   Model Yılı: {car.modelYear}
                 </Typography>
                 <Typography variant="h6" color="primary" sx={{ mt: 2 }}>
-                  G��nlük Fiyat: {car.dailyPrice} TL
+                  Günlük Fiyat: {car.dailyPrice} TL
                 </Typography>
                 {isLoggedIn() ? (
                   <Button 
@@ -360,7 +359,7 @@ function Cars() {
                     color="primary" 
                     fullWidth 
                     sx={{ mt: 2 }}
-                    onClick={() => navigate('/login')}
+                    onClick={() => navigate('/login', { state: { returnUrl: '/cars' } })}
                   >
                     Kiralamak için Giriş Yap
                   </Button>

@@ -9,7 +9,8 @@ import {
   Menu,
   MenuItem,
   Avatar,
-  Divider
+  Divider,
+  IconButton
 } from '@mui/material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
@@ -17,6 +18,9 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import PersonIcon from '@mui/icons-material/Person';
 import LogoutIcon from '@mui/icons-material/Logout';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import { useTheme } from '../context/ThemeContext';
 import api from '../api';
 
 function Navbar() {
@@ -25,6 +29,7 @@ function Navbar() {
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
   const [userName, setUserName] = useState('');
   const [profileImage, setProfileImage] = useState(null);
+  const { darkMode, toggleDarkMode } = useTheme();
   
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
@@ -160,8 +165,8 @@ function Navbar() {
                 </>
               )}
 
-              {/* Kullanıcı Menüsü */}
-              <Box sx={{ ml: 2 }}>
+              {/* Kullanıcı Menüsü ve Koyu Mod Toggle */}
+              <Box sx={{ ml: 1, display: 'flex', alignItems: 'center' }}>
                 <Button
                   color="inherit"
                   onClick={handleClick}
@@ -186,44 +191,54 @@ function Navbar() {
                   </Avatar>
                   {userName}
                 </Button>
-                <Menu
-                  anchorEl={anchorEl}
-                  open={open}
-                  onClose={handleClose}
-                  MenuListProps={{
-                    'aria-labelledby': 'basic-button',
-                  }}
-                  PaperProps={{
-                    elevation: 0,
-                    sx: {
-                      overflow: 'visible',
-                      filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
-                      mt: 1.5,
-                      '& .MuiAvatar-root': {
-                        width: 32,
-                        height: 32,
-                        ml: -0.5,
-                        mr: 1,
-                      },
-                    },
-                  }}
-                  transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                  anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+
+                {/* Koyu Mod Toggle Butonu - Kullanıcı isminden sonra */}
+                <IconButton
+                  color="inherit"
+                  onClick={toggleDarkMode}
+                  sx={{ ml: 1 }}
                 >
-                  <MenuItem 
-                    onClick={() => {
-                      handleClose();
-                      navigate('/profile');
-                    }}
-                  >
-                    <PersonIcon sx={{ mr: 2 }} /> Profil
-                  </MenuItem>
-                  <Divider />
-                  <MenuItem onClick={handleLogout}>
-                    <LogoutIcon sx={{ mr: 2 }} /> Çıkış Yap
-                  </MenuItem>
-                </Menu>
+                  {darkMode ? <LightModeIcon /> : <DarkModeIcon />}
+                </IconButton>
               </Box>
+
+              <Menu
+                anchorEl={anchorEl}
+                open={open}
+                onClose={handleClose}
+                MenuListProps={{
+                  'aria-labelledby': 'basic-button',
+                }}
+                PaperProps={{
+                  elevation: 0,
+                  sx: {
+                    overflow: 'visible',
+                    filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                    mt: 1.5,
+                    '& .MuiAvatar-root': {
+                      width: 32,
+                      height: 32,
+                      ml: -0.5,
+                      mr: 1,
+                    },
+                  },
+                }}
+                transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+              >
+                <MenuItem 
+                  onClick={() => {
+                    handleClose();
+                    navigate('/profile');
+                  }}
+                >
+                  <PersonIcon sx={{ mr: 2 }} /> Profil
+                </MenuItem>
+                <Divider />
+                <MenuItem onClick={handleLogout}>
+                  <LogoutIcon sx={{ mr: 2 }} /> Çıkış Yap
+                </MenuItem>
+              </Menu>
             </>
           ) : (
             <Box sx={{ ml: 2 }}>

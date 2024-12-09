@@ -347,3 +347,48 @@ input:focus, select:focus {
     margin-bottom: 5px;
   }
 }
+
+.image-preview-container {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 16px;
+}
+
+.image-preview {
+    max-width: 200px;
+    max-height: 150px;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.remove-image-button {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background-color: white !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.remove-image-button:hover {
+    background-color: #f5f5f5 !important;
+}
+
+.upload-area {
+    border: 2px dashed #1976d2;
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.upload-area:hover {
+    background-color: rgba(25, 118, 210, 0.04);
+}
+
+.upload-icon {
+    font-size: 40px;
+    color: #1976d2;
+    margin-bottom: 8px;
+}

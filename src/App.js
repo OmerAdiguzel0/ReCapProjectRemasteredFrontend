@@ -13,6 +13,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Profile from './pages/Profile';
 import { checkTokenExpiration, setupActivityTracking } from './utils/auth';
 import Payment from './pages/Payment';
+import RentalDetails from './pages/RentalDetails';
 
 function AppContent() {
   const { darkMode } = useTheme();
@@ -139,6 +140,15 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <Payment />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/rental-details" 
+              element={
+                <ProtectedRoute>
+                  <RentalDetails />
                 </ProtectedRoute>
               } 
             />

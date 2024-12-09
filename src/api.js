@@ -96,11 +96,11 @@ const api = {
 
             // Önce arabayı ekle
             const carResponse = await axios.post(`${BASE_URL}/cars`, {
-                brandId: parseInt(carData.brandId) || 0,
-                colorId: parseInt(carData.colorId) || 0,
-                modelYear: parseInt(carData.modelYear) || new Date().getFullYear(),
-                dailyPrice: parseFloat(carData.dailyPrice) || 0,
-                description: (carData.description || '').trim(),
+                brandId: parseInt(carData.brandId),
+                colorId: parseInt(carData.colorId),
+                modelYear: parseInt(carData.modelYear),
+                dailyPrice: parseFloat(carData.dailyPrice),
+                description: carData.description.trim(),
                 minFindeksScore: parseInt(carData.minFindeksScore) || 500
             });
 
@@ -110,46 +110,33 @@ const api = {
                 throw new Error(carResponse.data.message || 'Araba eklenemedi');
             }
 
-            // Resim yükleme işlemi
-            if (carData.image && carResponse.data.data?.carId) {
-                console.group('Image Upload');
-                try {
-                    const formData = new FormData();
-                    formData.append('ImagePath', carData.image);
-                    formData.append('carId', carResponse.data.data.carId);
+            // Eğer resim varsa, resmi yükle
+            if (carData.image) {
+                console.log('Uploading image for car:', carResponse.data.data.carId);
+                
+                const formData = new FormData();
+                formData.append('ImagePath', carData.image);
+                formData.append('carId', carResponse.data.data.carId);
 
-                    console.log('Image Upload Data:', {
-                        fileName: carData.image.name,
-                        fileSize: carData.image.size,
-                        fileType: carData.image.type,
-                        carId: carResponse.data.data.carId
-                    });
-
-                    const imageResponse = await axios.post(`${BASE_URL}/carimages/add`, formData, {
-                        headers: {
-                            'Content-Type': 'multipart/form-data'
-                        }
-                    });
-
-                    if (!imageResponse.data.success) {
-                        console.error('Image upload failed:', imageResponse.data.message);
-                        throw new Error(imageResponse.data.message);
+                const imageResponse = await axios.post(`${BASE_URL}/carimages/add`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
                     }
+                });
 
-                    console.log('Image Upload Response:', imageResponse.data);
-                } catch (imageError) {
-                    console.error('Image Upload Error:', imageError);
-                    throw imageError; // Resim yükleme hatasını yukarı fırlat
-                } finally {
-                    console.groupEnd();
+                console.log('Image Upload Response:', imageResponse.data);
+
+                if (!imageResponse.data.success) {
+                    console.error('Image upload failed:', imageResponse.data.message);
                 }
             }
 
-            console.groupEnd();
             return carResponse;
         } catch (error) {
-            console.error('Operation Failed:', error);
+            console.error('Car Add Error:', error);
             throw error;
+        } finally {
+            console.groupEnd();
         }
     },
     updateCar: async (carId, updateData) => {
@@ -169,7 +156,7 @@ const api = {
             };
 
             // Önce araç bilgilerini güncelle
-            const response = await axios.put(`/cars/${carId}`, carData);
+            const response = await axios.put(`${BASE_URL}/cars/${carId}`, carData);
 
             // Eğer yeni resim varsa, resmi yükle
             const imageFile = updateData.get('ImagePath');
@@ -178,7 +165,7 @@ const api = {
                 imageFormData.append('ImagePath', imageFile);
                 imageFormData.append('carId', carId);
                 
-                await axios.post('/carimages/add', imageFormData, {
+                await axios.post(`${BASE_URL}/carimages/add`, imageFormData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
                     }
@@ -191,7 +178,37 @@ const api = {
             throw error;
         }
     },
-    deleteCar: (carId) => axios.delete(`/cars/${carId}`),
+    deleteCar: async (carId) => {
+        try {
+            // Önce arabanın resimlerini kontrol et
+            const carImagesResponse = await axios.get(`${BASE_URL}/carimages/getbycarid?carId=${carId}`);
+            const images = carImagesResponse.data.data || [];
+            
+            // Özel yüklenmiş resimleri sil (default olmayan)
+            for (const image of images) {
+                if (!image.imagePath.toLowerCase().includes('default.jpg')) {
+                    await axios.post(`${BASE_URL}/carimages/delete`, { id: image.carImageId });
+                }
+            }
+
+            // Arabayı sil - DELETE metodu kullan
+            const response = await axios.delete(`${BASE_URL}/cars/${carId}`);
+
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Araba silinemedi');
+            }
+
+            return response;
+        } catch (error) {
+            console.error('Car delete error:', error);
+            console.error('Error details:', {
+                message: error.message,
+                response: error.response?.data,
+                stack: error.stack
+            });
+            throw error;
+        }
+    },
 
     // Araba resmi işlemleri
     uploadCarImage: async (file, carId) => {
@@ -203,14 +220,21 @@ const api = {
         });
     },
     getCarImages: (carId) => axios.get(`${BASE_URL}/carimages/getbycarid?carId=${carId}`),
-    deleteCarImage: (imageId) => axios.delete(`${BASE_URL}/carimages/${imageId}`),
+    deleteCarImage: async (imageId) => {
+        try {
+            return await axios.delete(`${BASE_URL}/carimages/${imageId}`);
+        } catch (error) {
+            console.error('Image delete error:', error);
+            throw error;
+        }
+    },
     deleteCarImageByPath: async (imagePath) => {
         try {
             return await axios.delete(`${BASE_URL}/carimages/deleteByPath`, {
                 data: { imagePath }
             });
         } catch (error) {
-            console.error('Error deleting image:', error);
+            console.error('Error deleting image by path:', error);
             throw error;
         }
     },
