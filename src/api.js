@@ -169,7 +169,7 @@ const api = {
             };
 
             // Önce araç bilgilerini güncelle
-            const response = await axios.put(`/cars/${carId}`, carData);
+            const response = await axios.put(`${BASE_URL}/cars/${carId}`, carData);
 
             // Eğer yeni resim varsa, resmi yükle
             const imageFile = updateData.get('ImagePath');
@@ -178,7 +178,7 @@ const api = {
                 imageFormData.append('ImagePath', imageFile);
                 imageFormData.append('carId', carId);
                 
-                await axios.post('/carimages/add', imageFormData, {
+                await axios.post(`${BASE_URL}/carimages/add`, imageFormData, {
                     headers: {
                         'Content-Type': 'multipart/form-data'
                     }
@@ -191,7 +191,37 @@ const api = {
             throw error;
         }
     },
-    deleteCar: (carId) => axios.delete(`/cars/${carId}`),
+    deleteCar: async (carId) => {
+        try {
+            // Önce arabanın resimlerini kontrol et
+            const carImagesResponse = await axios.get(`${BASE_URL}/carimages/getbycarid?carId=${carId}`);
+            const images = carImagesResponse.data.data || [];
+            
+            // Özel yüklenmiş resimleri sil (default olmayan)
+            for (const image of images) {
+                if (!image.imagePath.toLowerCase().includes('default.jpg')) {
+                    await axios.post(`${BASE_URL}/carimages/delete`, { id: image.carImageId });
+                }
+            }
+
+            // Arabayı sil - DELETE metodu kullan
+            const response = await axios.delete(`${BASE_URL}/cars/${carId}`);
+
+            if (!response.data.success) {
+                throw new Error(response.data.message || 'Araba silinemedi');
+            }
+
+            return response;
+        } catch (error) {
+            console.error('Car delete error:', error);
+            console.error('Error details:', {
+                message: error.message,
+                response: error.response?.data,
+                stack: error.stack
+            });
+            throw error;
+        }
+    },
 
     // Araba resmi işlemleri
     uploadCarImage: async (file, carId) => {
@@ -203,14 +233,21 @@ const api = {
         });
     },
     getCarImages: (carId) => axios.get(`${BASE_URL}/carimages/getbycarid?carId=${carId}`),
-    deleteCarImage: (imageId) => axios.delete(`${BASE_URL}/carimages/${imageId}`),
+    deleteCarImage: async (imageId) => {
+        try {
+            return await axios.delete(`${BASE_URL}/carimages/${imageId}`);
+        } catch (error) {
+            console.error('Image delete error:', error);
+            throw error;
+        }
+    },
     deleteCarImageByPath: async (imagePath) => {
         try {
             return await axios.delete(`${BASE_URL}/carimages/deleteByPath`, {
                 data: { imagePath }
             });
         } catch (error) {
-            console.error('Error deleting image:', error);
+            console.error('Error deleting image by path:', error);
             throw error;
         }
     },

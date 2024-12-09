@@ -25,9 +25,6 @@ import EmailIcon from '@mui/icons-material/Email';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import LockIcon from '@mui/icons-material/Lock';
 import api from '../api';
-import { useTheme } from '../context/ThemeContext';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
-import LightModeIcon from '@mui/icons-material/LightMode';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 
@@ -41,7 +38,6 @@ function Profile() {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const { darkMode, toggleDarkMode } = useTheme();
   const userStr = localStorage.getItem('user');
   const [profileImage, setProfileImage] = useState(null);
   const fileInputRef = useRef(null);
@@ -349,28 +345,6 @@ function Profile() {
                     </Button>
                   </Box>
                 </Grid>
-
-                {userStr && (
-                  <Grid item xs={12}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mt: 3 }}>
-                      <LightModeIcon sx={{ mr: 2, color: 'primary.main' }} />
-                      <Box sx={{ flexGrow: 1 }}>
-                        <Typography variant="subtitle2" color="textSecondary">
-                          Tema Ayarları
-                        </Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          Koyu tema kullanımını buradan açıp kapatabilirsiniz
-                        </Typography>
-                      </Box>
-                      <Switch
-                        checked={darkMode}
-                        onChange={toggleDarkMode}
-                        icon={<LightModeIcon />}
-                        checkedIcon={<DarkModeIcon />}
-                      />
-                    </Box>
-                  </Grid>
-                )}
               </CardContent>
             </Card>
           </Grid>

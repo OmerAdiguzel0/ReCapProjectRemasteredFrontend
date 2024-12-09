@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../api';
 import {
   Container,
@@ -15,6 +15,8 @@ import PersonIcon from '@mui/icons-material/Person';
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnUrl = location.state?.returnUrl || '/';
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -40,7 +42,7 @@ function Login() {
         const response = await api.login(formData);
         
         if (response.data.success) {
-            navigate('/');
+            navigate(returnUrl);
         } else {
             setError(response.data.message || 'Giriş başarısız');
         }
