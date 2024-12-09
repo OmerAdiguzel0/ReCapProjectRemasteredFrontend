@@ -6,13 +6,13 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Cars from './pages/Cars';
 import Rentals from './pages/Rentals';
-import Payment from './pages/Payment';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import Profile from './pages/Profile';
 import { checkTokenExpiration, setupActivityTracking } from './utils/auth';
+import Payment from './pages/Payment';
 
 function AppContent() {
   const { darkMode } = useTheme();
@@ -104,18 +104,14 @@ function AppContent() {
             {/* Normal kullanıcılar ve adminler için */}
             <Route 
               path="/cars" 
-              element={
-                <ProtectedRoute>
-                  <Cars />
-                </ProtectedRoute>
-              } 
+              element={<Cars />} 
             />
             
             {/* Sadece admin için */}
             <Route 
               path="/rentals" 
               element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute>
                   <Rentals />
                 </ProtectedRoute>
               } 
@@ -134,6 +130,15 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/payment" 
+              element={
+                <ProtectedRoute>
+                  <Payment />
                 </ProtectedRoute>
               } 
             />
