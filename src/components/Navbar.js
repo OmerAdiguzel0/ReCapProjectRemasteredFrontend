@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   AppBar, 
   Toolbar, 
@@ -8,7 +8,6 @@ import {
   Box,
   Menu,
   MenuItem,
-  IconButton,
   Avatar,
   Divider
 } from '@mui/material';
@@ -16,7 +15,6 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import { isAdmin, isLoggedIn } from '../utils/auth';
 import PersonIcon from '@mui/icons-material/Person';
 import LogoutIcon from '@mui/icons-material/Logout';
 
@@ -26,7 +24,6 @@ function Navbar() {
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
   const [userName, setUserName] = useState('');
   
-  // Menu için state
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
@@ -37,6 +34,17 @@ function Navbar() {
   const handleClose = () => {
     setAnchorEl(null);
   };
+
+  const handleLogout = useCallback(() => {
+    handleClose();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    setIsUserLoggedIn(false);
+    setIsUserAdmin(false);
+    setUserName('');
+    navigate('/login');
+    window.location.reload();
+  }, [navigate]);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -49,7 +57,6 @@ function Navbar() {
           setIsUserLoggedIn(true);
           setIsUserAdmin(user.isAdmin === true);
           setUserName(`${user.firstName} ${user.lastName}`);
-          console.log('Auth check:', { isLoggedIn: true, isAdmin: user.isAdmin });
         } catch (error) {
           console.error('Error parsing user data:', error);
           handleLogout();
@@ -62,18 +69,7 @@ function Navbar() {
     };
 
     checkAuth();
-  }, []);
-
-  const handleLogout = () => {
-    handleClose(); // Menüyü kapat
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setIsUserLoggedIn(false);
-    setIsUserAdmin(false);
-    setUserName('');
-    navigate('/login');
-    window.location.reload();
-  };
+  }, [handleLogout]);
 
   return (
     <AppBar position="static">
@@ -88,12 +84,12 @@ function Navbar() {
             Ana Sayfa
           </Button>
 
+          <Button color="inherit" component={RouterLink} to="/cars">
+            Araçlar
+          </Button>
+
           {isUserLoggedIn ? (
             <>
-              <Button color="inherit" component={RouterLink} to="/cars">
-                Araçlar
-              </Button>
-              
               {isUserAdmin && (
                 <>
                   <Button color="inherit" component={RouterLink} to="/rentals">

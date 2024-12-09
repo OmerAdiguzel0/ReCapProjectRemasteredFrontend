@@ -17,24 +17,29 @@ import {
   MenuItem,
   TextField,
   IconButton,
+  Alert,
 } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import { isLoggedIn } from '../utils/auth';
 
 function Cars() {
   const navigate = useNavigate();
+  // Temel state'ler
   const [cars, setCars] = useState([]);
   const [brands, setBrands] = useState([]);
   const [colors, setColors] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Filtre state'leri
   const [selectedBrand, setSelectedBrand] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
   const [minYear, setMinYear] = useState('');
   const [maxYear, setMaxYear] = useState('');
-  const [years, setYears] = useState([]);
-  const [carImages, setCarImages] = useState({});
+  
+  // Hata ve resim state'leri
   const [error, setError] = useState(null);
   const [currentImageIndexes, setCurrentImageIndexes] = useState({});
 
@@ -42,48 +47,24 @@ function Cars() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        console.log('Veri getirme başladı...');
         
-        // Tüm verileri paralel olarak çekelim
         const [carsResponse, brandsResponse, colorsResponse] = await Promise.all([
           api.getCarDetails(),
           api.getAllBrands(),
           api.getAllColors()
         ]);
         
-        console.log('Cars Response:', carsResponse);
-        
         if (carsResponse.data.success) {
           setCars(carsResponse.data.data);
-          // Her araç için başlangıç indeksini 0 olarak ayarla
           const initialIndexes = {};
           carsResponse.data.data.forEach(car => {
             initialIndexes[car.carId] = 0;
           });
           setCurrentImageIndexes(initialIndexes);
-        } else {
-          console.error('Arabalar getirilemedi:', carsResponse.data.message);
         }
 
         if (brandsResponse.data.success) setBrands(brandsResponse.data.data);
         if (colorsResponse.data.success) setColors(colorsResponse.data.data);
-
-        // Resim verilerini getir
-        const imagePromises = carsResponse.data.data.map(car => 
-          api.getCarImages(car.carId)
-            .then(res => ({ carId: car.carId, images: res.data.data }))
-            .catch(err => {
-              console.error(`Araba ${car.carId} için resim getirme hatası:`, err);
-              return { carId: car.carId, images: [] };
-            })
-        );
-        
-        const carImagesResults = await Promise.all(imagePromises);
-        const imagesMap = {};
-        carImagesResults.forEach(result => {
-          imagesMap[result.carId] = result.images;
-        });
-        setCarImages(imagesMap);
 
       } catch (error) {
         console.error('Veri getirme hatası:', error);
@@ -169,6 +150,11 @@ function Cars() {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
       <Grid container spacing={2} sx={{ mb: 4 }}>
         <Grid item xs={12} md={3}>
           <FormControl fullWidth>
@@ -344,15 +330,27 @@ function Cars() {
                 <Typography variant="h6" color="primary" sx={{ mt: 2 }}>
                   Günlük Fiyat: {car.dailyPrice} TL
                 </Typography>
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  fullWidth 
-                  sx={{ mt: 2 }}
-                  onClick={() => handleRentClick(car)}
-                >
-                  Kirala
-                </Button>
+                {isLoggedIn() ? (
+                  <Button 
+                    variant="contained" 
+                    color="primary" 
+                    fullWidth 
+                    sx={{ mt: 2 }}
+                    onClick={() => handleRentClick(car)}
+                  >
+                    Kirala
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="contained" 
+                    color="primary" 
+                    fullWidth 
+                    sx={{ mt: 2 }}
+                    onClick={() => navigate('/login')}
+                  >
+                    Kiralamak için Giriş Yap
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </Grid>
