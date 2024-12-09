@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   AppBar, 
   Toolbar, 
@@ -8,7 +8,6 @@ import {
   Box,
   Menu,
   MenuItem,
-  IconButton,
   Avatar,
   Divider
 } from '@mui/material';
@@ -16,17 +15,17 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import { isAdmin, isLoggedIn } from '../utils/auth';
 import PersonIcon from '@mui/icons-material/Person';
 import LogoutIcon from '@mui/icons-material/Logout';
+import api from '../api';
 
 function Navbar() {
   const navigate = useNavigate();
   const [isUserAdmin, setIsUserAdmin] = useState(false);
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
   const [userName, setUserName] = useState('');
+  const [profileImage, setProfileImage] = useState(null);
   
-  // Menu için state
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
 
@@ -38,42 +37,93 @@ function Navbar() {
     setAnchorEl(null);
   };
 
-  useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem('token');
-      const userStr = localStorage.getItem('user');
-      
-      if (token && userStr) {
-        try {
-          const user = JSON.parse(userStr);
-          setIsUserLoggedIn(true);
-          setIsUserAdmin(user.isAdmin === true);
-          setUserName(`${user.firstName} ${user.lastName}`);
-          console.log('Auth check:', { isLoggedIn: true, isAdmin: user.isAdmin });
-        } catch (error) {
-          console.error('Error parsing user data:', error);
-          handleLogout();
-        }
-      } else {
-        setIsUserLoggedIn(false);
-        setIsUserAdmin(false);
-        setUserName('');
-      }
-    };
-
-    checkAuth();
-  }, []);
-
   const handleLogout = () => {
-    handleClose(); // Menüyü kapat
+    handleClose();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setIsUserLoggedIn(false);
     setIsUserAdmin(false);
     setUserName('');
+    setProfileImage(null);
     navigate('/login');
-    window.location.reload();
   };
+
+  useEffect(() => {
+    const checkAuthAndLoadImage = async () => {
+        const token = localStorage.getItem('token');
+        const userStr = localStorage.getItem('user');
+        
+        if (token && userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                setIsUserLoggedIn(true);
+                setIsUserAdmin(user.isAdmin === true);
+                setUserName(`${user.firstName} ${user.lastName}`);
+
+                // Profil fotoğrafını kontrol et
+                if (user.profileImagePath) {
+                    console.log('Setting profile image from localStorage:', user.profileImagePath);
+                    setProfileImage(`http://localhost:7108/${user.profileImagePath}`);
+                } else {
+                    // Eğer localStorage'da yoksa API'den getir
+                    console.log('Fetching profile image from API...');
+                    const response = await api.getProfileImage();
+                    console.log('API Response:', response.data);
+
+                    if (response.data.success && response.data.data) {
+                        const imagePath = response.data.data;
+                        console.log('Setting profile image:', imagePath);
+                        setProfileImage(`http://localhost:7108/${imagePath}`);
+                        
+                        // localStorage'ı güncelle
+                        user.profileImagePath = imagePath;
+                        localStorage.setItem('user', JSON.stringify(user));
+                        console.log('Updated user in localStorage:', user);
+                    }
+                }
+            } catch (error) {
+                console.error('Error in auth check:', error);
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+                setIsUserLoggedIn(false);
+                setIsUserAdmin(false);
+                setUserName('');
+                setProfileImage(null);
+                navigate('/login');
+            }
+        } else {
+            setIsUserLoggedIn(false);
+            setIsUserAdmin(false);
+            setUserName('');
+            setProfileImage(null);
+        }
+    };
+
+    checkAuthAndLoadImage();
+
+    // Profil fotoğrafı güncelleme event listener'ı
+    const handleProfileImageUpdate = () => {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            const user = JSON.parse(userStr);
+            if (user.profileImagePath) {
+                setProfileImage(`http://localhost:7108/${user.profileImagePath}`);
+            } else {
+                setProfileImage(null); // Profil fotoğrafı silindiğinde null yap
+            }
+        }
+    };
+
+    handleProfileImageUpdate(); // İlk yüklemede çalıştır
+    
+    // Event listener'ı ekle
+    window.addEventListener('profileImageUpdate', handleProfileImageUpdate);
+    
+    // Cleanup
+    return () => {
+        window.removeEventListener('profileImageUpdate', handleProfileImageUpdate);
+    };
+  }, [navigate]);
 
   return (
     <AppBar position="static">
@@ -88,12 +138,12 @@ function Navbar() {
             Ana Sayfa
           </Button>
 
+          <Button color="inherit" component={RouterLink} to="/cars">
+            Araçlar
+          </Button>
+
           {isUserLoggedIn ? (
             <>
-              <Button color="inherit" component={RouterLink} to="/cars">
-                Araçlar
-              </Button>
-              
               {isUserAdmin && (
                 <>
                   <Button color="inherit" component={RouterLink} to="/rentals">
@@ -130,6 +180,7 @@ function Navbar() {
                       mr: 1,
                       bgcolor: 'primary.dark'
                     }}
+                    src={profileImage}
                   >
                     {userName.charAt(0)}
                   </Avatar>

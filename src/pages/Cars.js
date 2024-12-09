@@ -17,23 +17,29 @@ import {
   MenuItem,
   TextField,
   IconButton,
+  Alert,
 } from '@mui/material';
 import ArrowBackIosNewIcon from '@mui/icons-material/ArrowBackIosNew';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import { isLoggedIn } from '../utils/auth';
 
 function Cars() {
   const navigate = useNavigate();
+  // Temel state'ler
   const [cars, setCars] = useState([]);
   const [brands, setBrands] = useState([]);
   const [colors, setColors] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Filtre state'leri
   const [selectedBrand, setSelectedBrand] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
-  const [minPrice, setMinPrice] = useState(0);
-  const [maxPrice, setMaxPrice] = useState(5000);
-  const [selectedYear, setSelectedYear] = useState('');
-  const [years, setYears] = useState([]);
-  const [carImages, setCarImages] = useState({});
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [minYear, setMinYear] = useState('');
+  const [maxYear, setMaxYear] = useState('');
+  
+  // Hata ve resim state'leri
   const [error, setError] = useState(null);
   const [currentImageIndexes, setCurrentImageIndexes] = useState({});
 
@@ -41,48 +47,24 @@ function Cars() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        console.log('Veri getirme başladı...');
         
-        // Tüm verileri paralel olarak çekelim
         const [carsResponse, brandsResponse, colorsResponse] = await Promise.all([
           api.getCarDetails(),
           api.getAllBrands(),
           api.getAllColors()
         ]);
         
-        console.log('Cars Response:', carsResponse);
-        
         if (carsResponse.data.success) {
           setCars(carsResponse.data.data);
-          // Her araç için başlangıç indeksini 0 olarak ayarla
           const initialIndexes = {};
           carsResponse.data.data.forEach(car => {
             initialIndexes[car.carId] = 0;
           });
           setCurrentImageIndexes(initialIndexes);
-        } else {
-          console.error('Arabalar getirilemedi:', carsResponse.data.message);
         }
 
         if (brandsResponse.data.success) setBrands(brandsResponse.data.data);
         if (colorsResponse.data.success) setColors(colorsResponse.data.data);
-
-        // Resim verilerini getir
-        const imagePromises = carsResponse.data.data.map(car => 
-          api.getCarImages(car.carId)
-            .then(res => ({ carId: car.carId, images: res.data.data }))
-            .catch(err => {
-              console.error(`Araba ${car.carId} için resim getirme hatası:`, err);
-              return { carId: car.carId, images: [] };
-            })
-        );
-        
-        const carImagesResults = await Promise.all(imagePromises);
-        const imagesMap = {};
-        carImagesResults.forEach(result => {
-          imagesMap[result.carId] = result.images;
-        });
-        setCarImages(imagesMap);
 
       } catch (error) {
         console.error('Veri getirme hatası:', error);
@@ -95,22 +77,24 @@ function Cars() {
     fetchData();
   }, []);
 
-  const handlePrevImage = (carId, maxIndex) => {
-    setCurrentImageIndexes(prev => ({
-      ...prev,
-      [carId]: prev[carId] > 0 
-        ? prev[carId] - 1 
-        : maxIndex // Son resme git
-    }));
+  const handlePrevImage = (carId) => {
+    setCurrentImageIndexes(prev => {
+        const maxIndex = cars.find(c => c.carId === carId)?.imagePaths?.length - 1 || 0;
+        return {
+            ...prev,
+            [carId]: prev[carId] > 0 ? prev[carId] - 1 : maxIndex
+        };
+    });
   };
 
-  const handleNextImage = (carId, maxIndex) => {
-    setCurrentImageIndexes(prev => ({
-      ...prev,
-      [carId]: prev[carId] < maxIndex 
-        ? prev[carId] + 1 
-        : 0 // İlk resme dön
-    }));
+  const handleNextImage = (carId) => {
+    setCurrentImageIndexes(prev => {
+        const maxIndex = cars.find(c => c.carId === carId)?.imagePaths?.length - 1 || 0;
+        return {
+            ...prev,
+            [carId]: prev[carId] < maxIndex ? prev[carId] + 1 : 0
+        };
+    });
   };
 
   const getCarImageUrl = (car) => {
@@ -122,12 +106,12 @@ function Cars() {
   };
 
   const handleMinPriceChange = (event) => {
-    const value = event.target.value === '' ? 0 : Number(event.target.value);
+    const value = event.target.value === '' ? '' : Number(event.target.value);
     setMinPrice(value);
   };
 
   const handleMaxPriceChange = (event) => {
-    const value = event.target.value === '' ? maxPrice : Number(event.target.value);
+    const value = event.target.value === '' ? '' : Number(event.target.value);
     setMaxPrice(value);
   };
 
@@ -139,10 +123,12 @@ function Cars() {
     const colorMatch = !selectedColor || car.colorName === colors.find(c => c.colorId === parseInt(selectedColor))?.colorName;
     
     // Yıl filtresi
-    const yearMatch = !selectedYear || car.modelYear === parseInt(selectedYear);
+    const yearMatch = (!minYear || car.modelYear >= parseInt(minYear)) && 
+                     (!maxYear || car.modelYear <= parseInt(maxYear));
     
-    // Fiyat filtresi
-    const priceMatch = car.dailyPrice >= minPrice && car.dailyPrice <= maxPrice;
+    // Fiyat filtresi - güncellendi
+    const priceMatch = (minPrice === '' || car.dailyPrice >= minPrice) && 
+                      (maxPrice === '' || car.dailyPrice <= maxPrice);
     
     return brandMatch && colorMatch && yearMatch && priceMatch;
   });
@@ -156,6 +142,18 @@ function Cars() {
     });
   };
 
+  useEffect(() => {
+    const sliderInterval = setInterval(() => {
+        cars.forEach(car => {
+            if (car.imagePaths?.length > 1) {
+                handleNextImage(car.carId);
+            }
+        });
+    }, 3000); // Her 3 saniyede bir değiştir
+
+    return () => clearInterval(sliderInterval);
+  }, [cars]); // cars değiştiğinde interval'i yeniden başlat
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
@@ -166,6 +164,11 @@ function Cars() {
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4 }}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
       <Grid container spacing={2} sx={{ mb: 4 }}>
         <Grid item xs={12} md={3}>
           <FormControl fullWidth>
@@ -201,22 +204,36 @@ function Cars() {
             </Select>
           </FormControl>
         </Grid>
-        <Grid item xs={12} md={3}>
-          <FormControl fullWidth>
-            <InputLabel>Model Yılı</InputLabel>
-            <Select
-              value={selectedYear}
-              label="Model Yılı"
-              onChange={(e) => setSelectedYear(e.target.value)}
-            >
-              <MenuItem value="">Tümü</MenuItem>
-              {years.map((year) => (
-                <MenuItem key={year} value={year}>
-                  {year}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+        <Grid item xs={12} sm={6} md={3}>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <TextField
+              fullWidth
+              label="Min Yıl"
+              type="number"
+              value={minYear}
+              onChange={(e) => setMinYear(e.target.value)}
+              inputProps={{ 
+                min: "1900",
+                max: new Date().getFullYear(),
+                step: "1"
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Max Yıl"
+              type="number"
+              value={maxYear}
+              onChange={(e) => setMaxYear(e.target.value)}
+              inputProps={{ 
+                min: "1900",
+                max: new Date().getFullYear(),
+                step: "1"
+              }}
+              error={maxYear && minYear && parseInt(maxYear) < parseInt(minYear)}
+              helperText={maxYear && minYear && parseInt(maxYear) < parseInt(minYear) ? 
+                "Max yıl, min yıldan küçük olamaz" : ""}
+            />
+          </Box>
         </Grid>
         <Grid item xs={12} md={3}>
           <Typography gutterBottom>
@@ -229,7 +246,9 @@ function Cars() {
               value={minPrice}
               onChange={handleMinPriceChange}
               size="small"
-              InputProps={{ inputProps: { min: 0 } }}
+              InputProps={{ 
+                inputProps: { min: 0 }
+              }}
             />
             <TextField
               label="Max"
@@ -237,7 +256,12 @@ function Cars() {
               value={maxPrice}
               onChange={handleMaxPriceChange}
               size="small"
-              InputProps={{ inputProps: { min: minPrice } }}
+              InputProps={{ 
+                inputProps: { min: 0 }
+              }}
+              error={maxPrice !== '' && minPrice !== '' && maxPrice < minPrice}
+              helperText={maxPrice !== '' && minPrice !== '' && maxPrice < minPrice ? 
+                "Max fiyat, min fiyattan küçük olamaz" : ""}
             />
           </Box>
         </Grid>
@@ -271,7 +295,7 @@ function Cars() {
                           bgcolor: 'rgba(255, 255, 255, 0.9)',
                         },
                       }}
-                      onClick={() => handlePrevImage(car.carId, car.imagePaths.length - 1)}
+                      onClick={() => handlePrevImage(car.carId)}
                     >
                       <ArrowBackIosNewIcon />
                     </IconButton>
@@ -286,7 +310,7 @@ function Cars() {
                           bgcolor: 'rgba(255, 255, 255, 0.9)',
                         },
                       }}
-                      onClick={() => handleNextImage(car.carId, car.imagePaths.length - 1)}
+                      onClick={() => handleNextImage(car.carId)}
                     >
                       <ArrowForwardIosIcon />
                     </IconButton>
@@ -318,17 +342,29 @@ function Cars() {
                   Model Yılı: {car.modelYear}
                 </Typography>
                 <Typography variant="h6" color="primary" sx={{ mt: 2 }}>
-                  Günlük Fiyat: {car.dailyPrice} TL
+                  G��nlük Fiyat: {car.dailyPrice} TL
                 </Typography>
-                <Button 
-                  variant="contained" 
-                  color="primary" 
-                  fullWidth 
-                  sx={{ mt: 2 }}
-                  onClick={() => handleRentClick(car)}
-                >
-                  Kirala
-                </Button>
+                {isLoggedIn() ? (
+                  <Button 
+                    variant="contained" 
+                    color="primary" 
+                    fullWidth 
+                    sx={{ mt: 2 }}
+                    onClick={() => handleRentClick(car)}
+                  >
+                    Kirala
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="contained" 
+                    color="primary" 
+                    fullWidth 
+                    sx={{ mt: 2 }}
+                    onClick={() => navigate('/login')}
+                  >
+                    Kiralamak için Giriş Yap
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </Grid>

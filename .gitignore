@@ -21,3 +21,9 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Uploads klasörü
+wwwroot/Uploads/Images/*
+wwwroot/Uploads/ProfileImages/*
+!wwwroot/Uploads/Images/.gitkeep
+!wwwroot/Uploads/ProfileImages/.gitkeep

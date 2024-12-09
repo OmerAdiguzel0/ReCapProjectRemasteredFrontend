@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider as MuiThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { ThemeProvider as CustomThemeProvider, useTheme } from './context/ThemeContext';
@@ -6,12 +6,13 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Cars from './pages/Cars';
 import Rentals from './pages/Rentals';
-import Payment from './pages/Payment';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import Profile from './pages/Profile';
+import { checkTokenExpiration, setupActivityTracking } from './utils/auth';
+import Payment from './pages/Payment';
 
 function AppContent() {
   const { darkMode } = useTheme();
@@ -67,6 +68,28 @@ function AppContent() {
     },
   });
 
+  useEffect(() => {
+    // Aktivite izlemeyi başlat
+    setupActivityTracking();
+
+    // Token kontrolü için interval
+    const tokenCheckInterval = setInterval(() => {
+      if (!checkTokenExpiration()) {
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+      }
+    }, 30000); // Her 30 saniyede bir kontrol et
+
+    return () => {
+      clearInterval(tokenCheckInterval);
+      // Event listener'ları temizle
+      ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'].forEach(event => {
+        document.removeEventListener(event, () => {});
+      });
+    };
+  }, []);
+
   return (
     <MuiThemeProvider theme={theme}>
       <CssBaseline />
@@ -81,18 +104,14 @@ function AppContent() {
             {/* Normal kullanıcılar ve adminler için */}
             <Route 
               path="/cars" 
-              element={
-                <ProtectedRoute>
-                  <Cars />
-                </ProtectedRoute>
-              } 
+              element={<Cars />} 
             />
             
             {/* Sadece admin için */}
             <Route 
               path="/rentals" 
               element={
-                <ProtectedRoute requiredRole="admin">
+                <ProtectedRoute>
                   <Rentals />
                 </ProtectedRoute>
               } 
@@ -111,6 +130,15 @@ function AppContent() {
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              } 
+            />
+
+            <Route 
+              path="/payment" 
+              element={
+                <ProtectedRoute>
+                  <Payment />
                 </ProtectedRoute>
               } 
             />
