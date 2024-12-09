@@ -77,22 +77,24 @@ function Cars() {
     fetchData();
   }, []);
 
-  const handlePrevImage = (carId, maxIndex) => {
-    setCurrentImageIndexes(prev => ({
-      ...prev,
-      [carId]: prev[carId] > 0 
-        ? prev[carId] - 1 
-        : maxIndex // Son resme git
-    }));
+  const handlePrevImage = (carId) => {
+    setCurrentImageIndexes(prev => {
+        const maxIndex = cars.find(c => c.carId === carId)?.imagePaths?.length - 1 || 0;
+        return {
+            ...prev,
+            [carId]: prev[carId] > 0 ? prev[carId] - 1 : maxIndex
+        };
+    });
   };
 
-  const handleNextImage = (carId, maxIndex) => {
-    setCurrentImageIndexes(prev => ({
-      ...prev,
-      [carId]: prev[carId] < maxIndex 
-        ? prev[carId] + 1 
-        : 0 // İlk resme dön
-    }));
+  const handleNextImage = (carId) => {
+    setCurrentImageIndexes(prev => {
+        const maxIndex = cars.find(c => c.carId === carId)?.imagePaths?.length - 1 || 0;
+        return {
+            ...prev,
+            [carId]: prev[carId] < maxIndex ? prev[carId] + 1 : 0
+        };
+    });
   };
 
   const getCarImageUrl = (car) => {
@@ -139,6 +141,18 @@ function Cars() {
       } 
     });
   };
+
+  useEffect(() => {
+    const sliderInterval = setInterval(() => {
+        cars.forEach(car => {
+            if (car.imagePaths?.length > 1) {
+                handleNextImage(car.carId);
+            }
+        });
+    }, 3000); // Her 3 saniyede bir değiştir
+
+    return () => clearInterval(sliderInterval);
+  }, [cars]); // cars değiştiğinde interval'i yeniden başlat
 
   if (loading) {
     return (
@@ -281,7 +295,7 @@ function Cars() {
                           bgcolor: 'rgba(255, 255, 255, 0.9)',
                         },
                       }}
-                      onClick={() => handlePrevImage(car.carId, car.imagePaths.length - 1)}
+                      onClick={() => handlePrevImage(car.carId)}
                     >
                       <ArrowBackIosNewIcon />
                     </IconButton>
@@ -296,7 +310,7 @@ function Cars() {
                           bgcolor: 'rgba(255, 255, 255, 0.9)',
                         },
                       }}
-                      onClick={() => handleNextImage(car.carId, car.imagePaths.length - 1)}
+                      onClick={() => handleNextImage(car.carId)}
                     >
                       <ArrowForwardIosIcon />
                     </IconButton>
@@ -328,7 +342,7 @@ function Cars() {
                   Model Yılı: {car.modelYear}
                 </Typography>
                 <Typography variant="h6" color="primary" sx={{ mt: 2 }}>
-                  Günlük Fiyat: {car.dailyPrice} TL
+                  G��nlük Fiyat: {car.dailyPrice} TL
                 </Typography>
                 {isLoggedIn() ? (
                   <Button 

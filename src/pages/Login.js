@@ -30,54 +30,25 @@ function Login() {
     }));
   };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+    
     try {
-      setError(null);
-      setLoading(true);
-
-      console.group('Login Process');
-      console.log('Attempting login with:', { email: formData.email });
-
-      const response = await api.login({
-        email: formData.email.trim(),
-        password: formData.password
-      });
-      
-      console.log('Login Response:', response.data);
-      
-      if (response.data.success) {
-        const userData = response.data.data;
-        console.log('User Data:', userData);
+        console.log('Login attempt with:', formData);
+        const response = await api.login(formData);
         
-        // JWT token'ı kaydet
-        localStorage.setItem('token', userData.token);
-        
-        // Kullanıcı bilgilerini kaydet
-        const userToStore = {
-          id: userData.userId,
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          isAdmin: userData.isAdmin,
-          claims: userData.claims
-        };
-        console.log('Storing user data:', userToStore);
-        localStorage.setItem('user', JSON.stringify(userToStore));
-
-        // Login olduktan sonra ana sayfaya yönlendir
-        navigate('/');
-        // Sayfayı yenile ki Navbar güncellensin
-        window.location.reload();
-      } else {
-        setError(response.data.message);
-      }
+        if (response.data.success) {
+            navigate('/');
+        } else {
+            setError(response.data.message || 'Giriş başarısız');
+        }
     } catch (error) {
-      console.error('Login error:', error);
-      setError(error.response?.data?.message || 'Giriş yapılırken bir hata oluştu');
+        console.error('Login error:', error);
+        setError(error.response?.data?.message || 'Giriş yapılırken bir hata oluştu');
     } finally {
-      setLoading(false);
-      console.groupEnd();
+        setLoading(false);
     }
   };
 
@@ -106,7 +77,7 @@ function Login() {
           </Alert>
         )}
 
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleSubmit}>
           <TextField
             fullWidth
             label="E-posta"

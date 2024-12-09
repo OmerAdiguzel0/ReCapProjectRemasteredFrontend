@@ -76,18 +76,36 @@ function Home() {
   };
 
   const handlePrevImage = (carId) => {
-    setCurrentImageIndexes(prev => ({
-      ...prev,
-      [carId]: prev[carId] > 0 ? prev[carId] - 1 : 0
-    }));
+    setCurrentImageIndexes(prev => {
+        const maxIndex = cars.find(c => c.carId === carId)?.imagePaths?.length - 1 || 0;
+        return {
+            ...prev,
+            [carId]: prev[carId] > 0 ? prev[carId] - 1 : maxIndex
+        };
+    });
   };
 
-  const handleNextImage = (carId, maxIndex) => {
-    setCurrentImageIndexes(prev => ({
-      ...prev,
-      [carId]: prev[carId] < maxIndex ? prev[carId] + 1 : maxIndex
-    }));
+  const handleNextImage = (carId) => {
+    setCurrentImageIndexes(prev => {
+        const maxIndex = cars.find(c => c.carId === carId)?.imagePaths?.length - 1 || 0;
+        return {
+            ...prev,
+            [carId]: prev[carId] < maxIndex ? prev[carId] + 1 : 0
+        };
+    });
   };
+
+  useEffect(() => {
+    const sliderInterval = setInterval(() => {
+        cars.forEach(car => {
+            if (car.imagePaths?.length > 1) {
+                handleNextImage(car.carId);
+            }
+        });
+    }, 3000);
+
+    return () => clearInterval(sliderInterval);
+  }, [cars]);
 
   if (loading) {
     return (
@@ -181,7 +199,6 @@ function Home() {
                         },
                       }}
                       onClick={() => handlePrevImage(car.carId)}
-                      disabled={!currentImageIndexes[car.carId] || currentImageIndexes[car.carId] === 0}
                     >
                       <ArrowBackIosNewIcon />
                     </IconButton>
@@ -196,8 +213,7 @@ function Home() {
                           bgcolor: 'rgba(255, 255, 255, 0.9)',
                         },
                       }}
-                      onClick={() => handleNextImage(car.carId, car.imagePaths.length - 1)}
-                      disabled={currentImageIndexes[car.carId] === car.imagePaths.length - 1}
+                      onClick={() => handleNextImage(car.carId)}
                     >
                       <ArrowForwardIosIcon />
                     </IconButton>
