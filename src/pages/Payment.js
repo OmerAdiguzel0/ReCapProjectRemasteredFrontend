@@ -1,79 +1,115 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import api from '../api';
 import {
   Container,
   Paper,
   Typography,
+  Grid,
   TextField,
   Button,
   Box,
   Alert,
-  Stepper,
-  Step,
-  StepLabel,
-  Grid,
+  Card,
+  CardContent,
+  Divider,
   CircularProgress
 } from '@mui/material';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
+import PaymentIcon from '@mui/icons-material/Payment';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import DownloadIcon from '@mui/icons-material/Download';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import api from '../api/index';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { format } from 'date-fns';
+import { tr } from 'date-fns/locale';
 
 function Payment() {
   const location = useLocation();
   const navigate = useNavigate();
   const { selectedCar, rentalDetails } = location.state || {};
-  const [activeStep, setActiveStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [invoiceData, setInvoiceData] = useState(null);
+  const [user, setUser] = useState(null);
 
-  // Findeks puanı state'i
-  const [findeksScore, setFindeksScore] = useState(null);
-
-  // Kredi kartı bilgileri state'i
+  // Kredi kartı bilgileri için state
   const [cardInfo, setCardInfo] = useState({
     cardNumber: '',
     cardHolder: '',
-    expiryDate: '',
+    expiryMonth: '',
+    expiryYear: '',
     cvv: ''
   });
 
   useEffect(() => {
-    if (!selectedCar || !rentalDetails) {
+    // Kullanıcı ve araç bilgilerini kontrol et
+    const userStr = localStorage.getItem('user');
+    if (!userStr || !selectedCar || !rentalDetails) {
       navigate('/cars');
+      return;
     }
-    // Kullanıcının findeks puanını getir
-    fetchUserFindeksScore();
-  }, [navigate, selectedCar, rentalDetails]);
 
-  const fetchUserFindeksScore = async () => {
-    try {
-      // TODO: Gerçek API endpoint'i ile değiştirilecek
-      const response = await api.get('/users/findeks-score');
-      setFindeksScore(response.data.data);
-    } catch (error) {
-      console.error('Findeks puanı getirme hatası:', error);
-      setError('Findeks puanı alınamadı');
+    // Kullanıcı bilgilerini set et
+    setUser(JSON.parse(userStr));
+  }, [selectedCar, rentalDetails, navigate]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Kart numarası için sadece rakam girişi
+    if (name === 'cardNumber') {
+      const cleaned = value.replace(/\D/g, '');
+      if (cleaned.length <= 16) {
+        setCardInfo(prev => ({ ...prev, [name]: cleaned }));
+      }
+      return;
     }
+
+    // CVV için sadece rakam girişi
+    if (name === 'cvv') {
+      const cleaned = value.replace(/\D/g, '');
+      if (cleaned.length <= 3) {
+        setCardInfo(prev => ({ ...prev, [name]: cleaned }));
+      }
+      return;
+    }
+
+    // Ay seçimi kontrolü
+    if (name === 'expiryMonth') {
+      const cleaned = value.replace(/\D/g, '');
+      if (cleaned === '' || (parseInt(cleaned) >= 1 && parseInt(cleaned) <= 12)) {
+        setCardInfo(prev => ({ ...prev, [name]: cleaned }));
+      }
+      return;
+    }
+
+    // Yıl seçimi kontrolü
+    if (name === 'expiryYear') {
+      const cleaned = value.replace(/\D/g, '');
+      if (cleaned.length <= 2) {
+        setCardInfo(prev => ({ ...prev, [name]: cleaned }));
+      }
+      return;
+    }
+
+    setCardInfo(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleCardInfoChange = (event) => {
-    const { name, value } = event.target;
-    setCardInfo(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const validateCardInfo = () => {
+  const validateForm = () => {
     if (!cardInfo.cardNumber || cardInfo.cardNumber.length !== 16) {
       setError('Geçerli bir kart numarası giriniz');
       return false;
     }
-    if (!cardInfo.cardHolder) {
+    if (!cardInfo.cardHolder.trim()) {
       setError('Kart sahibi adını giriniz');
       return false;
     }
-    if (!cardInfo.expiryDate || !cardInfo.expiryDate.match(/^(0[1-9]|1[0-2])\/([0-9]{2})$/)) {
-      setError('Geçerli bir son kullanma tarihi giriniz (AA/YY)');
+    if (!cardInfo.expiryMonth || !cardInfo.expiryYear) {
+      setError('Geçerli bir son kullanma tarihi giriniz');
       return false;
     }
     if (!cardInfo.cvv || cardInfo.cvv.length !== 3) {
@@ -83,163 +119,343 @@ function Payment() {
     return true;
   };
 
-  const handlePayment = async () => {
-    if (!validateCardInfo()) return;
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+    if (!user) {
+      setError('Kullanıcı bilgileri bulunamadı');
+      return;
+    }
 
     setLoading(true);
     setError('');
 
     try {
-      // Findeks puanı kontrolü
-      if (findeksScore < selectedCar.minFindeksScore) {
-        setError(`Bu aracı kiralamak için minimum ${selectedCar.minFindeksScore} findeks puanına sahip olmalısınız. Mevcut puanınız: ${findeksScore}`);
-        setLoading(false);
-        return;
-      }
-
       // Ödeme simülasyonu
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Kiralama işlemini gerçekleştir
-      await api.post('/rentals/add', rentalDetails);
+      // Kiralama verilerini hazırla
+      const rentalData = {
+        carId: selectedCar.carId,
+        customerId: parseInt(user.id),
+        rentDate: rentalDetails.rentDate,
+        returnDate: rentalDetails.returnDate
+      };
 
-      setSuccess(true);
-      setActiveStep(2);
+      console.log('Gönderilen kiralama verileri:', rentalData);
 
-      // 3 saniye sonra ana sayfaya yönlendir
-      setTimeout(() => {
-        navigate('/');
-      }, 3000);
+      // Kiralama işlemini kaydet
+      const response = await api.addRental(rentalData);
+      console.log('Kiralama yanıtı:', response);
 
+      if (response.data.success) {
+        setSuccess(true);
+        setPaymentCompleted(true);
+        
+        // Fatura verilerini hazırla
+        setInvoiceData({
+          invoiceNumber: `INV-${Date.now()}`,
+          date: new Date().toLocaleDateString('tr-TR'),
+          rental: rentalDetails,
+          car: selectedCar,
+          payment: {
+            cardNumber: '**** **** **** ' + cardInfo.cardNumber.slice(-4),
+            cardHolder: cardInfo.cardHolder,
+            amount: rentalDetails.totalPrice
+          }
+        });
+      } else {
+        setError(response.data.message || 'Ödeme işlemi başarısız oldu');
+      }
     } catch (error) {
       console.error('Ödeme hatası:', error);
-      setError('Ödeme işlemi sırasında bir hata oluştu');
+      setError(error.response?.data?.message || 'Bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
     }
   };
 
-  const steps = ['Findeks Kontrolü', 'Ödeme', 'Tamamlandı'];
+  const handleDownloadInvoice = () => {
+    // PDF oluştur
+    const doc = new jsPDF();
+    
+    // Fatura başlığı
+    doc.setFontSize(20);
+    doc.text('ARAÇ KİRALAMA FATURASI', 105, 20, { align: 'center' });
+    
+    // Fatura numarası ve tarih
+    doc.setFontSize(10);
+    doc.text(`Fatura No: ${invoiceData.invoiceNumber}`, 20, 40);
+    doc.text(`Tarih: ${invoiceData.date}`, 20, 45);
+    
+    // Logo veya şirket bilgileri (opsiyonel)
+    doc.setFontSize(12);
+    doc.text('RentACar', 150, 40);
+    doc.setFontSize(8);
+    doc.text('www.rentacar.com', 150, 45);
+    doc.text('info@rentacar.com', 150, 50);
+    doc.text('Tel: +90 555 555 55 55', 150, 55);
+
+    // Müşteri Bilgileri
+    doc.setFontSize(12);
+    doc.text('MÜŞTERİ BİLGİLERİ', 20, 70);
+    doc.setFontSize(10);
+    doc.text(`Ad Soyad: ${cardInfo.cardHolder}`, 20, 80);
+    doc.text(`Kart No: ${invoiceData.payment.cardNumber}`, 20, 85);
+
+    // Araç Bilgileri
+    doc.setFontSize(12);
+    doc.text('ARAÇ BİLGİLERİ', 20, 100);
+    
+    const araçBilgileri = [
+      ['Marka/Model', selectedCar.brandName],
+      ['Açıklama', selectedCar.description],
+      ['Renk', selectedCar.colorName],
+      ['Model Yılı', selectedCar.modelYear.toString()]
+    ];
+
+    doc.autoTable({
+      startY: 105,
+      head: [['Özellik', 'Detay']],
+      body: araçBilgileri,
+      theme: 'grid',
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [66, 139, 202] }
+    });
+
+    // Kiralama Detayları
+    doc.setFontSize(12);
+    doc.text('KİRALAMA DETAYLARI', 20, doc.lastAutoTable.finalY + 20);
+
+    const kiralamaBilgileri = [
+      ['Başlangıç Tarihi', format(new Date(rentalDetails.rentDate), 'dd MMMM yyyy', { locale: tr })],
+      ['Dönüş Tarihi', format(new Date(rentalDetails.returnDate), 'dd MMMM yyyy', { locale: tr })],
+      ['Kiralama Süresi', `${Math.ceil((new Date(rentalDetails.returnDate) - new Date(rentalDetails.rentDate)) / (1000 * 60 * 60 * 24))} Gün`],
+      ['Günlük Ücret', `${selectedCar.dailyPrice} TL`],
+      ['Toplam Tutar', `${rentalDetails.totalPrice} TL`]
+    ];
+
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY + 25,
+      head: [['', 'Detay']],
+      body: kiralamaBilgileri,
+      theme: 'grid',
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [66, 139, 202] }
+    });
+
+    // Alt Bilgi
+    doc.setFontSize(10);
+    doc.text('Bu bir elektronik faturadır.', 20, doc.lastAutoTable.finalY + 20);
+    doc.text('İyi yolculuklar dileriz!', 20, doc.lastAutoTable.finalY + 25);
+
+    // PDF'i indir
+    doc.save(`fatura-${invoiceData.invoiceNumber}.pdf`);
+  };
+
+  if (!user || !selectedCar || !rentalDetails) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
-      <Paper elevation={3} sx={{ p: 4 }}>
-        <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-          {steps.map((label) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
-
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-
-        {success ? (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            Ödeme başarıyla tamamlandı! Ana sayfaya yönlendiriliyorsunuz...
-          </Alert>
-        ) : (
-          <Box>
-            {activeStep === 0 && (
-              <Box sx={{ mb: 4 }}>
-                <Typography variant="h6" gutterBottom>
-                  Findeks Puanı Kontrolü
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Grid container spacing={4}>
+        <Grid item xs={12} md={8}>
+          <Paper elevation={3} sx={{ p: 4 }}>
+            {paymentCompleted ? (
+              // Ödeme Başarılı Ekranı
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
+                <Typography variant="h4" gutterBottom color="success.main">
+                  Ödeme Başarılı!
                 </Typography>
-                {findeksScore !== null ? (
-                  <Typography>
-                    Findeks Puanınız: {findeksScore}
-                    {findeksScore >= selectedCar.minFindeksScore ? (
-                      <Alert severity="success" sx={{ mt: 2 }}>
-                        Findeks puanınız yeterli! Ödeme adımına geçebilirsiniz.
-                      </Alert>
-                    ) : (
-                      <Alert severity="error" sx={{ mt: 2 }}>
-                        Üzgünüz, findeks puanınız bu araç için yetersiz.
-                        Minimum gereken puan: {selectedCar.minFindeksScore}
-                      </Alert>
-                    )}
-                  </Typography>
-                ) : (
-                  <CircularProgress />
-                )}
-                {findeksScore >= selectedCar.minFindeksScore && (
-                  <Button
-                    variant="contained"
-                    onClick={() => setActiveStep(1)}
-                    sx={{ mt: 2 }}
-                  >
-                    Devam Et
-                  </Button>
-                )}
+                <Typography variant="body1" sx={{ mb: 4 }}>
+                  Kiralama işleminiz başarıyla tamamlandı.
+                </Typography>
+                
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<DownloadIcon />}
+                  onClick={handleDownloadInvoice}
+                  sx={{ mb: 2 }}
+                >
+                  Faturayı İndir
+                </Button>
+                
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={() => navigate('/')}
+                  sx={{ ml: 2 }}
+                >
+                  Ana Sayfaya Dön
+                </Button>
               </Box>
-            )}
+            ) : (
+              // Ödeme Formu (mevcut form kodları)
+              <>
+                <Typography variant="h4" gutterBottom>
+                  Ödeme Bilgileri
+                </Typography>
 
-            {activeStep === 1 && (
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Typography variant="h6" gutterBottom>
-                    Ödeme Bilgileri
-                  </Typography>
+                {error && (
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    {error}
+                  </Alert>
+                )}
+
+                <Grid container spacing={3}>
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Kart Numarası"
+                      name="cardNumber"
+                      value={cardInfo.cardNumber}
+                      onChange={handleInputChange}
+                      placeholder="1234 5678 9012 3456"
+                      InputProps={{
+                        startAdornment: <CreditCardIcon sx={{ mr: 1, color: 'text.secondary' }} />
+                      }}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12}>
+                    <TextField
+                      fullWidth
+                      label="Kart Sahibi"
+                      name="cardHolder"
+                      value={cardInfo.cardHolder}
+                      onChange={handleInputChange}
+                      placeholder="AD SOYAD"
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={6}>
+                        <TextField
+                          fullWidth
+                          label="Ay"
+                          name="expiryMonth"
+                          value={cardInfo.expiryMonth}
+                          onChange={handleInputChange}
+                          placeholder="MM"
+                        />
+                      </Grid>
+                      <Grid item xs={6}>
+                        <TextField
+                          fullWidth
+                          label="Yıl"
+                          name="expiryYear"
+                          value={cardInfo.expiryYear}
+                          onChange={handleInputChange}
+                          placeholder="YY"
+                        />
+                      </Grid>
+                    </Grid>
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      label="CVV"
+                      name="cvv"
+                      value={cardInfo.cvv}
+                      onChange={handleInputChange}
+                      placeholder="123"
+                    />
+                  </Grid>
                 </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Kart Numarası"
-                    name="cardNumber"
-                    value={cardInfo.cardNumber}
-                    onChange={handleCardInfoChange}
-                    inputProps={{ maxLength: 16 }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    fullWidth
-                    label="Kart Sahibi"
-                    name="cardHolder"
-                    value={cardInfo.cardHolder}
-                    onChange={handleCardInfoChange}
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    fullWidth
-                    label="Son Kullanma Tarihi (AA/YY)"
-                    name="expiryDate"
-                    value={cardInfo.expiryDate}
-                    onChange={handleCardInfoChange}
-                    inputProps={{ maxLength: 5 }}
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    fullWidth
-                    label="CVV"
-                    name="cvv"
-                    value={cardInfo.cvv}
-                    onChange={handleCardInfoChange}
-                    inputProps={{ maxLength: 3 }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    onClick={handlePayment}
-                    disabled={loading}
-                    sx={{ mt: 2 }}
-                  >
-                    {loading ? <CircularProgress size={24} /> : 'Ödemeyi Tamamla'}
-                  </Button>
-                </Grid>
-              </Grid>
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  fullWidth
+                  size="large"
+                  onClick={handleSubmit}
+                  disabled={loading || success}
+                  startIcon={loading ? <CircularProgress size={20} /> : <PaymentIcon />}
+                  sx={{ mt: 4 }}
+                >
+                  {loading ? 'İşleminiz Gerçekleştiriliyor...' : `${rentalDetails.totalPrice} TL Öde`}
+                </Button>
+              </>
             )}
-          </Box>
-        )}
-      </Paper>
+          </Paper>
+        </Grid>
+
+        {/* Sağ taraf - Kiralama Özeti */}
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Kiralama Özeti
+              </Typography>
+              <Divider sx={{ mb: 2 }} />
+
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Araç
+                </Typography>
+                <Typography variant="body1">
+                  {selectedCar.brandName} - {selectedCar.description}
+                </Typography>
+              </Box>
+
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Kiralama Tarihi
+                </Typography>
+                <Typography variant="body1">
+                  {new Date(rentalDetails.rentDate).toLocaleDateString('tr-TR')}
+                </Typography>
+              </Box>
+
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Dönüş Tarihi
+                </Typography>
+                <Typography variant="body1">
+                  {new Date(rentalDetails.returnDate).toLocaleDateString('tr-TR')}
+                </Typography>
+              </Box>
+
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Kiralama Süresi
+                </Typography>
+                <Typography variant="body1">
+                  {Math.ceil((new Date(rentalDetails.returnDate) - new Date(rentalDetails.rentDate)) / (1000 * 60 * 60 * 24))} Gün
+                </Typography>
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Günlük Ücret
+                </Typography>
+                <Typography variant="body1">
+                  {selectedCar.dailyPrice} TL
+                </Typography>
+              </Box>
+
+              <Box>
+                <Typography variant="h6" color="primary">
+                  Toplam Tutar
+                </Typography>
+                <Typography variant="h4" color="primary" sx={{ fontWeight: 'bold' }}>
+                  {rentalDetails.totalPrice} TL
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
     </Container>
   );
 }

@@ -83,11 +83,24 @@ const api = {
     },
 
     getRentals: () => {
-        return axios.get(`${BASE_URL}/rentals`);
+        return axios.get(`${BASE_URL}/rentals/getall`);
     },
 
-    addRental: (rental) => {
-        return axios.post(`${BASE_URL}/rentals`, rental);
+    addRental: async (rentalData) => {
+        try {
+            console.log('Rental data sending:', rentalData);
+            const response = await axios.post(`${BASE_URL}/rentals/add`, {
+                carId: rentalData.carId,
+                userId: rentalData.customerId,
+                rentDate: rentalData.rentDate,
+                returnDate: rentalData.returnDate
+            });
+            console.log('Rental response:', response);
+            return response;
+        } catch (error) {
+            console.error('Rental error:', error);
+            throw error;
+        }
     },
 
     // Brand (Marka) işlemleri
@@ -182,6 +195,31 @@ const api = {
 
     deleteCar: (car) => {
         return axios.post(`${BASE_URL}/cars/delete`, car);
+    },
+
+    // Kullanıcı işlemleri
+    getUserFindeksScore: async (userId) => {
+        console.log("\n=== getUserFindeksScore API Call Started ===");
+        console.log("Requesting findeks score for userId:", userId);
+        
+        try {
+            const response = await axios.get(`${BASE_URL}/users/findeks-score/${userId}`);
+            console.log("API Response:", {
+                status: response.status,
+                data: response.data
+            });
+            console.log("=== getUserFindeksScore API Call Completed ===\n");
+            return response;
+        } catch (error) {
+            console.error("\n=== getUserFindeksScore API Call Error ===");
+            console.error("Error details:", {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status
+            });
+            console.error("=== Error Log End ===\n");
+            throw error;
+        }
     },
 
     // Profil fotoğrafı işlemleri

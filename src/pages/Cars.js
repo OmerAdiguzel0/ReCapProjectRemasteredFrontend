@@ -134,10 +134,9 @@ function Cars() {
   });
 
   const handleRentClick = (car) => {
-    navigate('/rentals', { 
+    navigate('/rental-details', { 
       state: { 
-        selectedCar: car,
-        fromCarsPage: true
+        selectedCar: car
       } 
     });
   };
