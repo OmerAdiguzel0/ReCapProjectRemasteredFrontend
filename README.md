@@ -1,70 +1,255 @@
-# Getting Started with Create React App
+# ReCap Project - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## 🚀 Proje Açıklaması
+Bu proje, araç kiralama sisteminin frontend tarafını oluşturan, **React** ve **Material-UI** ile geliştirilmiş modern bir web uygulamasıdır. Kullanıcı dostu arayüzü ve responsive tasarımı ile hem masaüstü hem de mobil cihazlarda optimum kullanım sağlar.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## 📦 Proje Yapısı
+```
+frontend/
+├── src/
+│   ├── api/          # API istekleri
+│   ├── components/   # Yeniden kullanılabilir bileşenler
+│   ├── context/      # Context API tanımlamaları
+│   ├── pages/        # Sayfa bileşenleri
+│   ├── utils/        # Yardımcı fonksiyonlar
+│   └── App.js        # Ana uygulama bileşeni
+```
 
-### `npm start`
+---
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## 🛠 Teknolojiler
+- **React 18**
+- **Material-UI (MUI)**
+- **React Router v6**
+- **Axios**
+- **JWT-Decode**
+- **Date-FNS**
+- **React Context API**
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+---
 
-### `npm test`
+## ⚙️ Kurulum
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+1. Projeyi klonlayın:
+   ```bash
+   git clone https://github.com/OmerAdiguzel0/ReCapProjectRemasteredFrontend.git
+   ```
 
-### `npm run build`
+2. Bağımlılıkları yükleyin:
+   ```bash
+   cd frontend
+   npm install
+   ```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+3. Geliştirme sunucusunu başlatın:
+   ```bash
+   npm start
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+---
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## 📱 Sayfalar ve Özellikler
 
-### `npm run eject`
+### **Ana Sayfa**
+- Öne çıkan araçlar
+- Hızlı arama
+- Kategori filtreleme
+- Responsive slider
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### **Araç Listeleme**
+- Detaylı filtreleme
+- Sıralama seçenekleri
+- Araç kartları
+- Sayfalama
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### **Araç Detay**
+- Araç görselleri galerisi
+- Teknik özellikler
+- Fiyat bilgisi
+- Kiralama formu
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### **Kullanıcı Profili**
+- Profil bilgileri düzenleme
+- Profil fotoğrafı yükleme
+- Şifre değiştirme
+- Kiralama geçmişi
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### **Admin Paneli**
+- Araç yönetimi
+- Kullanıcı yönetimi
+- İstatistikler
+- Sistem ayarları
 
-## Learn More
+---
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## 🔒 Güvenlik ve Kimlik Doğrulama
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### **JWT Yönetimi**
+```javascript
+// api/index.js
+axios.interceptors.request.use(
+    config => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    }
+);
+```
 
-### Code Splitting
+### **Korumalı Rotalar**
+```javascript
+// components/ProtectedRoute.js
+function ProtectedRoute({ children, requiredRole }) {
+    const userLoggedIn = isLoggedIn() && checkTokenExpiration();
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+    if (!userLoggedIn) {
+        return <Navigate to="/login" />;
+    }
 
-### Analyzing the Bundle Size
+    if (requiredRole === 'admin' && !isAdmin()) {
+        return <Navigate to="/" />;
+    }
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+    return children;
+}
+```
 
-### Making a Progressive Web App
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## 🎨 Tema ve Stil Yönetimi
 
-### Advanced Configuration
+### **Tema Konfigürasyonu**
+```javascript
+// context/ThemeContext.js
+const theme = createTheme({
+    palette: {
+        primary: {
+            main: '#1976d2',
+        },
+        secondary: {
+            main: '#dc004e',
+        },
+    },
+});
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+### **Responsive Tasarım**
+- Mobile-first yaklaşım
+- Breakpoint yönetimi
+- Esnek grid sistemi
 
-### Deployment
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+## 📡 API Entegrasyonu
 
-### `npm run build` fails to minify
+### **API İstekleri**
+```javascript
+// api/index.js
+const api = {
+    getCars: async () => {
+        return await axios.get(`${BASE_URL}/cars`);
+    },
+    rentCar: async (rentalData) => {
+        return await axios.post(`${BASE_URL}/rentals`, rentalData);
+    }
+    // ... diğer API çağrıları
+};
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+---
+
+## 🔄 State Yönetimi
+
+### **Context Kullanımı**
+```javascript
+// context/AuthContext.js
+export const AuthProvider = ({ children }) => {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    // ... auth logic
+
+    return (
+        <AuthContext.Provider value={{ user, login, logout }}>
+            {children}
+        </AuthContext.Provider>
+    );
+};
+```
+
+---
+
+## 📊 Form Yönetimi
+- Form validasyonu
+- Hata mesajları
+- Async form submission
+- File upload
+
+---
+
+## 🌐 Dil Desteği
+- Türkçe arayüz
+- Çoklu dil desteğine hazır yapı
+- Tarih ve para birimi formatlaması
+
+---
+
+## 🔍 SEO Optimizasyonu
+- Meta tag yönetimi
+- Semantic HTML kullanımı
+- Performans optimizasyonu
+
+---
+
+## 📱 Progressive Web App (PWA)
+- Offline kullanım
+- App-like deneyim
+- Push notifications (opsiyonel)
+
+---
+
+## 🚀 Performans Optimizasyonu
+- Lazy loading
+- Code splitting
+- Image optimization
+- Caching stratejileri
+
+---
+
+## 🧪 Test
+
+### **Test Çalıştırma**
+```bash
+# Unit testleri çalıştır
+npm test
+
+# Test coverage raporu
+npm test -- --coverage
+```
+
+---
+
+## 📦 Build ve Deploy
+
+### **Production Build**
+```bash
+npm run build
+```
+
+### **Build'i Sunma**
+```bash
+serve -s build
+```
+
+---
+
+## 📄 Lisans
+Bu proje **MIT lisansı** altında lisanslanmıştır.
+
+---
+
+
