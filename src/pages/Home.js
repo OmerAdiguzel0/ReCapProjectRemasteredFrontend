@@ -107,6 +107,14 @@ function Home() {
     return () => clearInterval(sliderInterval);
   }, [cars]);
 
+  const handleRentClick = (car) => {
+    navigate('/rental-details', { 
+        state: { 
+            selectedCar: car
+        } 
+    });
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
@@ -252,12 +260,7 @@ function Home() {
                   color="primary" 
                   fullWidth 
                   sx={{ mt: 2 }}
-                  onClick={() => navigate('/rentals', { 
-                    state: { 
-                      selectedCar: car,
-                      fromCarsPage: true
-                    } 
-                  })}
+                  onClick={() => handleRentClick(car)}
                 >
                   Kirala
                 </Button>

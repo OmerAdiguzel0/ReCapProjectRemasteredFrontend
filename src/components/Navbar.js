@@ -151,9 +151,6 @@ function Navbar() {
             <>
               {isUserAdmin && (
                 <>
-                  <Button color="inherit" component={RouterLink} to="/rentals">
-                    Kiralamalar
-                  </Button>
                   <Button 
                     color="inherit" 
                     component={RouterLink} 

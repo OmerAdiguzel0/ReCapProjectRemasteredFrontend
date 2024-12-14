@@ -135,9 +135,9 @@ function Cars() {
 
   const handleRentClick = (car) => {
     navigate('/rental-details', { 
-      state: { 
-        selectedCar: car
-      } 
+        state: { 
+            selectedCar: car
+        } 
     });
   };
 
@@ -228,9 +228,6 @@ function Cars() {
                 max: new Date().getFullYear(),
                 step: "1"
               }}
-              error={Boolean(maxYear && minYear && parseInt(maxYear) < parseInt(minYear))}
-              helperText={maxYear && minYear && parseInt(maxYear) < parseInt(minYear) ? 
-                "Max yıl, min yıldan küçük olamaz" : ""}
             />
           </Box>
         </Grid>
@@ -258,9 +255,6 @@ function Cars() {
               InputProps={{ 
                 inputProps: { min: 0 }
               }}
-              error={Boolean(maxPrice !== '' && minPrice !== '' && maxPrice < minPrice)}
-              helperText={maxPrice !== '' && minPrice !== '' && maxPrice < minPrice ? 
-                "Max fiyat, min fiyattan küçük olamaz" : ""}
             />
           </Box>
         </Grid>
